@@ -1,0 +1,30 @@
+{
+    "background": "img/BG.png",
+    "sims": [{
+        "name": "wild",
+        "url": "img/SYM1.png"
+    }, {
+        "name": "strawberry",
+        "url": "img/SYM3.png"
+    }, {
+        "name": "pineapple",
+        "url": "img/SYM4.png"
+    }, {
+        "name": "lemon",
+        "url": "img/SYM5.png"
+    }, {
+        "name": "cucumber",
+        "url": "img/SYM6.png"
+    }, {
+        "name": "grapes",
+        "url": "img/SYM7.png"
+    }],
+    "simSize": {
+        "width": "150",
+        "height": "99"
+    },
+    "buttons": {
+        "refresh": "img/BTN_Spin.png",
+        "refresh_disabled": "img/BTN_Spin_d.png"
+    }
+}

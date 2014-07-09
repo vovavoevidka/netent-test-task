@@ -15,6 +15,15 @@
         return c;
     };
 
+    self.pickRandomProperty = function(obj) {
+        var result;
+        var count = 0;
+        for (var prop in obj)
+            if (Math.random() < 1 / ++count)
+                result = prop;
+        return result;
+    }
+
     //END OF HELPERS;
 
     //GENERAL:
@@ -31,11 +40,12 @@
         var x = event.pageX - convasLeft,
             y = event.pageY - convasTop;
 
-        self.clickHandlers.forEach(function(handler) {
+        for (var index in self.clickHandlers) {
+            var handler = self.clickHandlers[index];
             if (y > handler.area.top && y < handler.area.top + handler.area.height && x > handler.area.left && x < handler.area.left + handler.area.width) {
                 handler.callback();
             }
-        });
+        }
     });
 
     self.config = {};
@@ -75,9 +85,18 @@
         var service = {};
         service.states = {
             "welcome": {
-                onEnter: function() {
+                onEnter: function(data) {
+                    var isSimSelected = false;
                     var setBackground = function(ctx, img) {
                         ctx.drawImage(img, 0, 0);
+                    };
+                    var drawSelectedSim = function(ctx, img) {
+                        refreshView();
+                        ctx.drawImage(img,
+                            config.welcome_selectedSimProp.left,
+                            config.welcome_selectedSimProp.top,
+                            config.welcome_selectedSimProp.width,
+                            config.welcome_selectedSimProp.height);
                     };
                     var drawSim = function(ctx, imges, width, height) {
                         var x = 120,
@@ -89,7 +108,9 @@
                             self.clickHandlers.push({
                                 callback: (function(name) {
                                     return function() {
-                                        alert("sim " + name + " clicked");
+                                        isSimSelected = true;
+                                        drawSelectedSim(ctx, config.sims[name]);
+                                        config.selectedSim = name;
                                     }
                                 }(img)),
                                 area: {
@@ -109,16 +130,145 @@
                         };
                     };
                     var drawNavigation = function(ctx, img, area) {
-                        ctx.drawImage(img, area.top, area.left, area.width, area.height);
+                        ctx.drawImage(img, area.left, area.top, area.width, area.height);
+                        self.clickHandlers.push({
+                            callback: (function() {
+                                return data.nav_spin_me;
+                            }()),
+                            area: {
+                                top: parseInt(area.top),
+                                left: parseInt(area.left),
+                                width: parseInt(area.width),
+                                height: parseInt(area.height)
+                            }
+                        })
                     };
-                    setBackground(ctx, config.background);
-                    drawSim(ctx, config.sims, config.simSize["width"], config.simSize["height"]);
-                    drawNavigation(ctx, config.buttons.refresh_disabled, {
-                        top: 0,
-                        left: 0,
-                        width: 100,
-                        height: 100
-                    });
+                    var refreshView = function() {
+                        self.clickHandlers = [];
+                        setBackground(ctx, config.background);
+                        drawSim(ctx, config.sims, config.welcome_simSize["width"], config.welcome_simSize["height"]);
+                        if (!isSimSelected) {
+                            drawNavigation(ctx, config.buttons.refresh_disabled, config.navigation_area);
+                        } else {
+                            drawNavigation(ctx, config.buttons.refresh, config.navigation_area);
+                        }
+                    };
+                    refreshView();
+                },
+                onLeave: function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    self.clickHandlers = [];
+                }
+            },
+            "game": {
+                onEnter: function(data) {
+                    var num_on_catches = 0;
+                    var FPS = 60;
+                    setInterval(function() {
+                        draw();
+                    }, 1000 / FPS);
+
+                    var dy = 5,
+                        sims = [],
+                        minWait = 1000,
+                        lastTime = +new Date();
+
+                    function Sim(x, y, width, height, type) {
+                        this.x = x;
+                        this.y = y;
+                        this.width = width;
+                        this.height = height;
+                        this.type = type;
+                    }
+
+                    Sim.prototype.update = function() {
+                        if (this.y < parseInt(config.gameareasize.height)) {
+                            this.y += dy
+                        } else {
+                            this.y = parseInt(config.gameareasize.top);
+                        }
+                        if (this.type == config.selectedSim) {
+                            self.clickHandlers = [];
+                            addNavigationHandler(config.navigation_area);
+                            self.clickHandlers.push({
+                                callback: (function() {
+                                    return function() {
+                                        num_on_catches += 1;
+                                        draw();
+                                        if (num_on_catches >= parseInt(config.num_on_catches_to_win))
+                                            data.win_scenario();
+                                    };
+                                }()),
+                                area: {
+                                    top: parseInt(this.y),
+                                    left: parseInt(this.x),
+                                    width: parseInt(this.width),
+                                    height: parseInt(this.height)
+                                }
+                            })
+                        }
+                    };
+
+                    Sim.prototype.render = function() {
+                        ctx.drawImage(config.sims[this.type], this.x, this.y, this.width, this.height);
+                    };
+
+                    var start_new_game = function() {
+                        sims = [];
+                    };
+
+                    var setBackground = function(ctx, img) {
+                        ctx.drawImage(img, 0, 0);
+                    };
+
+                    var addNavigationHandler = function(area) {
+                        self.clickHandlers.push({
+                            callback: (function() {
+                                return start_new_game;
+                            }()),
+                            area: {
+                                top: parseInt(area.top),
+                                left: parseInt(area.left),
+                                width: parseInt(area.width),
+                                height: parseInt(area.height)
+                            }
+                        });
+                    };
+
+                    var drawNavigation = function(ctx, img, area) {
+                        ctx.drawImage(img, area.left, area.top, area.width, area.height);
+                    };
+
+                    var drawCurrentScore = function(ctx, score) {
+                        ctx.font = '20pt Calibri';
+                        ctx.fillStyle = 'blue';
+                        ctx.fillText("score " + score + " of " + config.num_on_catches_to_win, canvas.width - 100, 30)
+                    };
+
+                    function draw() {
+                        if (+new Date() > lastTime + minWait) {
+                            lastTime = +new Date();
+                            sims.push(new Sim(Math.random() * parseInt(config.gameareasize.width) + parseInt(config.gameareasize.left), parseInt(config.gameareasize.top), 40, 40, self.pickRandomProperty(config.sims)));
+                        }
+
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        setBackground(ctx, config.background);
+                        drawCurrentScore(ctx, num_on_catches);
+                        drawNavigation(ctx, config.buttons.refresh, config.navigation_area);
+                        sims.forEach(function(e) {
+                            e.update();
+                            e.render();
+                        });
+                    };
+                },
+                onLeave: function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    self.clickHandlers = [];
+                }
+            },
+            "win": {
+                onEnter: function(data) {
+
                 },
                 onLeave: function() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -127,13 +277,13 @@
             }
         };
         service.currentState = null;
-        service.changeState = function(state) {
+        service.changeState = function(state, data) {
             if (this.currentState)
                 this.states[this.currentState].onLeave();
 
             if (Object.keys(this.states).indexOf(state) != -1) {
                 this.currentState = state;
-                this.states[state].onEnter();
+                this.states[state].onEnter(data);
             } else {
                 console.error("state " + state + " not defined");
             }
@@ -153,7 +303,15 @@
     //init function
     var init = function(config) {
         self.config = config;
-        self.stateService.changeState("welcome");
+        self.stateService.changeState("welcome", {
+            nav_spin_me: function() {
+                self.stateService.changeState("game", {
+                    win_scenario: function() {
+                        self.stateService.changeState("win");
+                    }
+                });
+            }
+        });
     };
 
     var imagesLoad = function(config, prop, url, success) {
@@ -209,9 +367,18 @@
 
     loadConfig(function(data) {
         imagesPreload(data, function(config) {
-            config.simSize = {};
-            config.simSize["width"] = data.simSize["width"];
-            config.simSize["height"] = data.simSize["height"];
+            config.welcome_simSize = data.welcome_simSize;
+            config.welcome_selectedSimProp = data.welcome_selectedSimProp;
+            config.navbuttons_prop = data.navbuttons_prop;
+            config.gameareasize = data.gameareasize;
+            config.num_on_catches_to_win = data.num_on_catches_to_win;
+
+            config.navigation_area = {
+                top: config.navbuttons_prop.top,
+                left: config.navbuttons_prop.left,
+                width: config.navbuttons_prop.width,
+                height: config.navbuttons_prop.height
+            };
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             init(config);
         });

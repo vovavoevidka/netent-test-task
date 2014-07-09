@@ -19,10 +19,29 @@
         "name": "grapes",
         "url": "img/SYM7.png"
     }],
-    "simSize": {
+    "welcome_simSize": {
         "width": "150",
         "height": "99"
     },
+    "welcome_selectedSimProp": {
+        "top": "100",
+        "left": "800",
+        "width": "150",
+        "height": "99"
+    },
+    "navbuttons_prop": {
+        "top": "210",
+        "left": "815",
+        "width": "120",
+        "height": "120"
+    },
+    "gameareasize": {
+        "top": "0",
+        "left": "80",
+        "width": "620",
+        "height": "536"
+    },
+    "num_on_catches_to_win": "5",
     "buttons": {
         "refresh": "img/BTN_Spin.png",
         "refresh_disabled": "img/BTN_Spin_d.png"
